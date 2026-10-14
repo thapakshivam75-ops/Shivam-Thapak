@@ -17,7 +17,7 @@ test('public Render profile streams hosted chat without exposing shared private 
   await new Promise(resolve=>provider.listen(0,'127.0.0.1',resolve));
   const providerPort=provider.address().port;
   const port=34128;
-  const childEnv={...process.env};delete childEnv.HOST;Object.assign(childEnv,{PORT:String(port),NODE_ENV:'production',PUBLIC_CHAT_ONLY:'true',TRUST_PROXY:'false',AI_API_FORMAT:'openai',AI_BASE_URL:`http://127.0.0.1:${providerPort}/v1`,AI_API_KEY:'test-server-only-key',AI_MODEL:'test-model',AI_MAX_OUTPUT_TOKENS:'96',ASSISTANT_PASSWORD:'',FIREBASE_AUTH_REQUIRED:'false'});
+  const childEnv={...process.env};delete childEnv.HOST;Object.assign(childEnv,{PORT:String(port),NODE_ENV:'production',PUBLIC_CHAT_ONLY:'true',TRUST_PROXY:'false',AI_API_FORMAT:'openai',AI_BASE_URL:`http://127.0.0.1:${providerPort}/v1`,AI_API_KEY:'test-server-only-key',AI_MODEL:'test-model',AI_MAX_OUTPUT_TOKENS:'96',ASSISTANT_PASSWORD:''});
   const child=spawn(process.execPath,['server.mjs'],{env:childEnv,stdio:'ignore'});
   t.after(async()=>{child.kill();await new Promise(resolve=>provider.close(resolve))});
   let ready=false;
