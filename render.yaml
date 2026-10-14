@@ -3,7 +3,7 @@ services:
     name: manas-personal-assistant
     runtime: node
     plan: free
-    buildCommand: node --check server.mjs && node --check app.js
+    buildCommand: npm ci --omit=dev && node --check server.mjs && node --check app.js
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -22,4 +22,12 @@ services:
       - key: AI_MAX_OUTPUT_TOKENS
         value: "384"
       - key: AI_API_KEY
+        sync: false
+      - key: FIREBASE_AUTH_REQUIRED
+        value: "true"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
         sync: false
