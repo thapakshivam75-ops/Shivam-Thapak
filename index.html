@@ -1,4 +1,71 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080a10"><title>Manas — Personal Assistant</title><link rel="stylesheet" href="/style.css"></head>
-<body><div id="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="brand-icon">✳</div><div><strong>manas</strong><small>PERSONAL AI</small></div><button class="icon-button mobile-close" id="closeNav" aria-label="Close navigation">×</button></div><button class="new-chat" id="newChat"><span>＋</span> New conversation</button><div class="side-label">WORKSPACE</div><nav class="nav"><button class="nav-item active" data-view="chat"><span>◉</span> Assistant</button><button class="nav-item" data-view="inbox"><span>✉</span> Inbox & messages <i id="inboxCount"></i></button><button class="nav-item" data-view="code"><span>⌘</span> Code review</button><button class="nav-item" data-view="tasks"><span>◷</span> Tasks & reminders <i id="taskCount"></i></button></nav><div class="side-label history-label">RECENT</div><div id="history" class="history"></div><div class="sidebar-spacer"></div><div class="privacy-note"><span>◈</span><div><strong>Private by default</strong><small>Your data stays on this device</small></div></div><button class="nav-item settings-link" data-view="settings"><span>⚙</span> Settings <i class="connection-dot" id="settingsDot"></i></button><div class="profile"><div class="avatar">S</div><div><strong>Local workspace</strong><small>Personal assistant</small></div><span class="online"></span></div></aside>
-<main class="main"><header class="topbar"><button id="menuToggle" class="icon-button menu-toggle" aria-label="Open navigation">☰</button><div class="crumb">Workspace <span>/</span> <strong id="crumbTitle">Assistant</strong></div><div class="top-right"><div class="status-pill" id="aiStatus"><i></i><span>Checking AI…</span></div><nav class="persona-switcher" aria-label="Assistant persona"><button class="persona-pill active" type="button" data-mode="jarvis" onclick="const s=document.getElementById('assistantMode');if(s){s.value='jarvis';s.dispatchEvent(new Event('change'))}this.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===this))">Jarvis Core</button><button class="persona-pill" type="button" data-mode="coding" onclick="const s=document.getElementById('assistantMode');if(s){s.value='coding';s.dispatchEvent(new Event('change'))}this.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===this))">Code Architect</button><button class="persona-pill" type="button" data-mode="creative" onclick="const s=document.getElementById('assistantMode');if(s){s.value='creative';s.dispatchEvent(new Event('change'))}this.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===this))">Brainstorm</button></nav><button class="icon-button" id="voiceTop" title="Toggle voice mode" aria-label="Toggle voice mode" aria-pressed="false">🎙</button><div class="avatar small">S</div></div></header><div class="page" id="page"></div></main></div><div id="toast" class="toast"></div><script src="/app.js" defer></script><script>try{const mode=localStorage.getItem("manas-mode")||"jarvis";document.querySelectorAll(".persona-pill").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode))}catch{}</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080a10">
+  <meta name="description" content="Manas personal AI assistant console">
+  <title>Manas — Intelligence Core</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app" class="console-app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-row">
+      <div class="brand-icon">✳</div>
+      <div class="brand-wordmark"><strong>MANAS</strong><small>PERSONAL INTELLIGENCE</small></div>
+      <button class="icon-button mobile-close" id="closeNav" aria-label="Close navigation">×</button>
+    </div>
+    <button class="new-chat" id="newChat"><span>＋</span><span>New session</span><kbd>⌘ K</kbd></button>
+    <div class="nav-caption">WORKSPACE</div>
+    <nav class="nav" aria-label="Workspace navigation">
+      <button class="nav-item active" data-view="chat"><span class="nav-glyph">◉</span>Chats<i class="nav-indicator"></i></button>
+      <button class="nav-item" data-view="tasks"><span class="nav-glyph">⌘</span>Projects</button>
+      <button class="nav-item" data-view="inbox"><span class="nav-glyph">✉</span>Inbox &amp; messages<i id="inboxCount"></i></button>
+      <button class="nav-item" data-view="code"><span class="nav-glyph">⌁</span>Code review</button>
+      <button class="nav-item settings-link" data-view="settings"><span class="nav-glyph">⚙</span>Settings<i class="connection-dot" id="settingsDot"></i></button>
+    </nav>
+    <div class="recent-block"><div class="nav-caption">RECENT SESSIONS</div><div id="history" class="history"></div></div>
+    <div class="sidebar-footer">
+      <div class="privacy-note"><span>◈</span><div><strong>Local-first memory</strong><small>Context stays on this device</small></div></div>
+      <div class="profile user-pill"><div class="avatar">S</div><div><strong>Local workspace</strong><small>Personal assistant</small></div><span class="online"></span></div>
+    </div>
+  </aside>
+  <main class="main central-core">
+    <header class="topbar">
+      <div class="topbar-left"><button id="menuToggle" class="icon-button menu-toggle" aria-label="Open navigation">☰</button><div class="crumb"><span>MANAS</span><b>/</b><strong id="crumbTitle">Assistant</strong></div></div>
+      <nav class="persona-switcher" aria-label="Assistant persona">
+        <button class="persona-pill active" type="button" data-mode="jarvis" onclick="localStorage.setItem('manas-mode','jarvis');const s=document.getElementById('assistantMode');if(s){s.value='jarvis';s.dispatchEvent(new Event('change'))}">Jarvis Core</button>
+        <button class="persona-pill" type="button" data-mode="coding" onclick="localStorage.setItem('manas-mode','coding');const s=document.getElementById('assistantMode');if(s){s.value='coding';s.dispatchEvent(new Event('change'))}">Code Architect</button>
+        <button class="persona-pill" type="button" data-mode="creative" onclick="localStorage.setItem('manas-mode','creative');const s=document.getElementById('assistantMode');if(s){s.value='creative';s.dispatchEvent(new Event('change'))}">Brainstorm</button>
+      </nav>
+      <div class="topbar-right"><span class="topbar-label">CORE 01</span><button class="icon-button voice-top" id="voiceTop" title="Toggle voice mode" aria-label="Toggle voice mode" aria-pressed="false">🎙</button></div>
+    </header>
+    <div class="page" id="page"></div>
+  </main>
+  <aside class="utility-hud" aria-label="System telemetry">
+    <div class="hud-heading"><span class="hud-kicker">SYSTEM MONITOR</span><span class="hud-clock">LIVE</span></div>
+    <section class="hud-card neural-card">
+      <div class="hud-card-title"><span class="hud-icon cyan-icon">⌁</span><div><small>NEURAL LINK</small><strong>Provider status</strong></div></div>
+      <div class="status-pill" id="aiStatus"><i></i><span>Checking AI…</span></div>
+      <div class="hud-meter-label"><span>CHANNEL HEALTH</span><b>API</b></div><div class="meter"><i></i></div>
+    </section>
+    <section class="hud-card voice-card">
+      <div class="hud-card-title"><span class="hud-icon violet-icon">◖</span><div><small>VOICE ENGINE</small><strong>Vocal synced</strong></div></div>
+      <div class="telemetry-line"><span class="telemetry-dot"></span><span class="vocal-state" id="vocalState">Standby</span><b>WEB SPEECH</b></div>
+      <div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </section>
+    <section class="hud-card runtime-card">
+      <div class="hud-card-title"><span class="hud-icon cyan-icon">◈</span><div><small>RUNTIME</small><strong>System meters</strong></div></div>
+      <div class="metric"><div><span>Memory context</span><b>LOCAL</b></div><div class="metric-track"><i class="metric-cyan"></i></div></div>
+      <div class="metric"><div><span>Response stream</span><b>READY</b></div><div class="metric-track"><i class="metric-violet"></i></div></div>
+      <div class="metric"><div><span>Search index</span><b>LIVE WEB</b></div><div class="metric-track"><i class="metric-mixed"></i></div></div>
+    </section>
+    <div class="hud-bottom"><span class="pulse-dot"></span><span>ALL SYSTEMS MONITORED</span><small>MANAS · v1.0</small></div>
+  </aside>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/app.js" defer></script>
+<script>try{const mode=localStorage.getItem("manas-mode")||"jarvis";document.querySelectorAll(".persona-pill").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode))}catch{}</script>
+</body>
+</html>
