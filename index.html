@@ -39,7 +39,7 @@
         <button class="persona-pill" type="button" data-mode="coding" onclick="localStorage.setItem('manas-mode','coding');const s=document.getElementById('assistantMode');if(s){s.value='coding';s.dispatchEvent(new Event('change'))}">Code Architect</button>
         <button class="persona-pill" type="button" data-mode="creative" onclick="localStorage.setItem('manas-mode','creative');const s=document.getElementById('assistantMode');if(s){s.value='creative';s.dispatchEvent(new Event('change'))}">Brainstorm</button>
       </nav>
-      <div class="topbar-right"><span class="topbar-label">CORE 01</span><button class="icon-button voice-top" id="voiceTop" title="Toggle voice mode" aria-label="Toggle voice mode" aria-pressed="false">🎙</button></div>
+      <div class="topbar-right"><span class="topbar-label">CORE 01</span><button class="live-vision-button" id="liveVisionButton" type="button" aria-haspopup="dialog" aria-controls="visionHud"><span class="live-dot"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5zM17 10l4-2v8l-4-2z"/></svg><span>Live Vision</span></button><button class="icon-button voice-top" id="voiceTop" title="Toggle voice mode" aria-label="Toggle voice mode" aria-pressed="false">🎙</button></div>
     </header>
     <div class="page" id="page"></div>
   </main>
@@ -63,6 +63,18 @@
     </section>
     <div class="hud-bottom"><span class="pulse-dot"></span><span>ALL SYSTEMS MONITORED</span><small>MANAS · v1.0</small></div>
   </aside>
+</div>
+<div class="vision-overlay" id="visionOverlay" hidden>
+  <div class="vision-backdrop" id="visionBackdrop"></div>
+  <section class="vision-hud" id="visionHud" role="dialog" aria-modal="false" aria-labelledby="visionTitle">
+    <header class="vision-titlebar" id="visionDragHandle"><div class="vision-heading"><span class="vision-camera-glyph">⌖</span><div><div class="vision-title-row"><h2 id="visionTitle">LIVE VISION</h2><span class="vision-live-badge"><i></i> LIVE</span></div><p>Local object detection · Private camera stream</p></div></div><div class="vision-window-actions"><button class="vision-window-button" id="visionCollapse" type="button" aria-label="Collapse vision window">−</button><button class="vision-window-button" id="visionClose" type="button" aria-label="Close vision">×</button></div></header>
+    <div class="vision-body" id="visionBody">
+      <div class="vision-stage" id="visionStage"><video id="visionVideo" autoplay muted playsinline></video><canvas id="visionCanvas" aria-hidden="true"></canvas><div class="vision-reticle" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="vision-scanline" aria-hidden="true"></div><div class="vision-start-card" id="visionStartCard"><span>◉</span><strong>Camera access required</strong><small>Allow camera access to begin local object detection.</small></div><div class="vision-model-status" id="visionModelStatus">Loading local detector…</div></div>
+      <div class="vision-telemetry"><span class="telemetry-live-dot"></span><strong id="visionTelemetry">Awaiting camera</strong><span id="visionModelBadge">COCO-SSD · LOCAL</span></div>
+      <div class="vision-controls"><button id="visionSwitch" type="button"><span>⇄</span> Switch Camera</button><button class="vision-analyze" id="visionAnalyze" type="button"><span>⌕</span> Snapshot &amp; Deep Analyze</button><button id="visionVoice" type="button"><span>🎙</span> Voice Query</button><button class="vision-close-control" id="visionCloseControl" type="button">Close Vision</button></div>
+      <div class="vision-disclaimer">Camera frames are analyzed locally for object labels. A snapshot is sent to your configured AI provider only when you choose deep analysis or ask a camera question.</div>
+    </div>
+  </section>
 </div>
 <div class="canvas-overlay" id="canvasOverlay" hidden>
   <button class="canvas-backdrop" id="canvasBackdrop" aria-label="Close canvas"></button>

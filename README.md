@@ -40,6 +40,10 @@ Groq vision requires a valid API key and a model enabled for the account; free a
 
 The **Create image** menu and matching chat prompts use Pollinations’ legacy no-key image URL from the server, so the prompt is not exposed as a browser URL and no key is needed by this app. It is best-effort: Pollinations’ newer documented API uses authentication, and the legacy endpoint may be unavailable or rate-limited. Manas shows an error if it cannot return an image; no paid API is called as a fallback.
 
+### Live Vision
+
+The Live Vision HUD requests the browser camera only after the user opens it. Camera frames stay in the browser for the local COCO-SSD object detector, which is loaded from jsDelivr on demand. Closing the HUD stops the camera tracks. **Snapshot & Deep Analyze** and camera-related chat questions send one JPEG snapshot to `/api/vision/analyze`, which uses the configured `AI_VISION_MODEL`; camera questions work while the camera is open. Camera access requires localhost or HTTPS and browser permission. The Groq free tier may impose rate/model limits; check the account’s current quota. The suggested older Llama 3.2 vision preview IDs are no longer suitable; use `qwen/qwen3.8-27b` as configured above.
+
 ## Provider choice for hosted chat
 
 The server already implements OpenAI Chat Completions (`/chat/completions`), bearer authorization, and response parsing. **Groq is the simplest fit**: its [OpenAI compatibility docs](https://console.groq.com/docs/openai) specify the base URL `https://api.groq.com/openai/v1`. As checked in October 2026, Groq lists `openai/gpt-oss-20b` as the recommended successor for the retired Llama 3.1 8B Instant model. Groq's [free plan is quota-limited](https://console.groq.com/docs/rate-limits) (per-model RPM/RPD/token caps); quotas vary and can change, so check the account/model limits. Free access is not unlimited or a reliability guarantee.
