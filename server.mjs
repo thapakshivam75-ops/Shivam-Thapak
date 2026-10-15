@@ -63,11 +63,13 @@ async function ask(messages, system='You are a helpful personal assistant. Reply
       } else data=await r.json().catch(()=>({}));
     } catch(e) {
       if(e.name==='TimeoutError'&&candidate!==candidates.at(-1)){lastError=`${candidate} timed out; trying fallback`;continue;}
-      throw new Error(`Could not complete a request to the AI provider at ${url}. Start Ollama and retry. (${e.name==='TimeoutError'?'request timed out':'connection failed'})`);
+      const reason=e.name==='TimeoutError'?'request timed out':String(e.message||'connection failed').slice(0,300);
+      throw new Error(`Could not reach the AI provider at ${url} (${reason})`);
     }
     const answer=format==='ollama'?data.message?.content:data.choices?.[0]?.message?.content;
     if(r.ok&&answer) { onModel(candidate); return answer; }
-    lastError=data.error||`AI provider returned ${r.status}`;
+    const providerError=data.error;
+    lastError=(typeof providerError==='string'?providerError:providerError?.message)||data.message||`AI provider returned ${r.status}`;
   }
   throw new Error(`AI request failed for the configured model and fallback: ${lastError}`);
 }
@@ -220,7 +222,13 @@ const routes = async (req,res) => {
       const content=[{type:'text',text:prompt},{type:'image_url',image_url:{url:`data:image/jpeg;base64,${match[1]}`,detail:'high'}}];
       const assistant=await ask([{role:'user',content}],system,m=>usedModel=m,null,768,model);
       return send(res,200,{assistant,model:usedModel,createdAt:new Date().toISOString()});
-    }catch(e){return send(res,503,{error:e.message})}finally{activeChatRequests--}
+    }catch(e){
+      const secret=String(env.AI_API_KEY||env.GROQ_API_KEY||env.GEMINI_API_KEY||'');
+      const detail=String(e?.message||e||'Unknown provider error').slice(0,1200);
+      const safeDetail=secret?detail.split(secret).join('[redacted]'):detail;
+      console.error(`[vision] model=${env.AI_VISION_MODEL||'qwen/qwen3.8-27b'} error=${safeDetail}`);
+      return send(res,503,{error:safeDetail})
+    }finally{activeChatRequests--}
   }
   if(req.method==='POST'&&['/api/chat','/api/chat/stream'].includes(u.pathname)){
     if(!chatLimit(req,res))return;

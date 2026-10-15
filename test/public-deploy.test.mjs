@@ -9,6 +9,7 @@ test('public Render profile streams hosted chat without exposing shared private 
   const provider=http.createServer(async(req,res)=>{
     const chunks=[];for await(const chunk of req)chunks.push(chunk);
     received={url:req.url,authorization:req.headers.authorization,body:JSON.parse(Buffer.concat(chunks).toString())};
+    if(!received.body.stream&&received.body.messages?.some(m=>Array.isArray(m.content)&&m.content.some(part=>part.text?.includes('trigger Groq error')))){res.writeHead(400,{'content-type':'application/json'});return res.end(JSON.stringify({error:{message:'Vision model rejected the image request'}}))}
     if(!received.body.stream){res.writeHead(200,{'content-type':'application/json'});return res.end(JSON.stringify({choices:[{message:{content:'{"facts":["User prefers Hindi"]}'}}]}))}
     res.writeHead(200,{'content-type':'text/event-stream'});
     res.write('data: {"choices":[{"delta":{"content":"Namaste"}}]}\n\n');
@@ -38,6 +39,8 @@ test('public Render profile streams hosted chat without exposing shared private 
   assert.equal(vision.status,200);await vision.text();assert.equal(received.body.model,'test-vision-model');assert.ok(received.body.messages[1].content.some(x=>x.type==='image_url'&&x.image_url.url.startsWith('data:image/png;base64,')));
   const liveVision=await fetch(`http://127.0.0.1:${port}/api/vision/analyze`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({image:'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q==',prompt:'Describe this camera frame',mode:'jarvis'})});
   assert.equal(liveVision.status,200);assert.ok((await liveVision.json()).assistant);assert.equal(received.body.model,'test-vision-model');assert.ok(received.body.messages[1].content.some(x=>x.type==='image_url'&&x.image_url.url.startsWith('data:image/jpeg;base64,')));assert.match(received.body.messages[0].content,/Live Vision/);
+  const visionFailure=await fetch(`http://127.0.0.1:${port}/api/vision/analyze`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({image:'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q==',prompt:'trigger Groq error',mode:'jarvis'})});
+  assert.equal(visionFailure.status,503);assert.match((await visionFailure.json()).error,/Vision model rejected the image request/);
   const refreshed=await fetch(`http://127.0.0.1:${port}/api/memory/refresh`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({conversation:[{user:'I prefer Hindi responses.',assistant:'Understood.'}],facts:[]})});
   assert.equal(refreshed.status,200);assert.deepEqual((await refreshed.json()).facts,['User prefers Hindi']);
   assert.deepEqual(await(await fetch(`http://127.0.0.1:${port}/api/data`)).json(),{chats:[],tasks:[],analyses:[]});
