@@ -67,3 +67,10 @@
   .vision-hud.collapsed .vision-window-button{width:26px;height:26px}
 }
 @media(max-width:760px){.vision-hud{max-height:85vh;max-height:min(85dvh,calc(100dvh - 68px))}.vision-stage{max-height:40vh;max-height:40dvh}}
+/* Speech interaction states */
+body.voice-listening .composer:before{background:radial-gradient(circle at 35% 28%,#f0fff5 0 4%,#a8ffbe 12%,#22c55e 42%,#0e9f6e 70%,rgba(14,159,110,.12) 82%,transparent 84%);box-shadow:0 0 18px #4ade80,0 0 42px rgba(34,197,94,.78),0 0 78px rgba(16,185,129,.5);animation:voice-listen-pulse .72s ease-in-out infinite}
+body.voice-listening .composer:after{border-color:rgba(74,222,128,.86);box-shadow:0 0 18px rgba(74,222,128,.6),inset 0 0 16px rgba(16,185,129,.24);animation:voice-listen-ring 1.2s ease-out infinite}
+body.voice-speaking .composer:before{animation:voice-speak-pulse 1.05s ease-in-out infinite}
+@keyframes voice-listen-pulse{50%{transform:translateX(-50%) scale(1.14);filter:brightness(1.35)}}
+@keyframes voice-listen-ring{0%{transform:translateX(-50%) scale(.72);opacity:.9}100%{transform:translateX(-50%) scale(1.55);opacity:.12}}
+@keyframes voice-speak-pulse{50%{transform:translateX(-50%) scale(1.1);filter:brightness(1.28)}}

@@ -39,7 +39,7 @@
         <button class="persona-pill" type="button" data-mode="coding" onclick="localStorage.setItem('manas-mode','coding');const s=document.getElementById('assistantMode');if(s){s.value='coding';s.dispatchEvent(new Event('change'))}">Code Architect</button>
         <button class="persona-pill" type="button" data-mode="creative" onclick="localStorage.setItem('manas-mode','creative');const s=document.getElementById('assistantMode');if(s){s.value='creative';s.dispatchEvent(new Event('change'))}">Brainstorm</button>
       </nav>
-      <div class="topbar-right"><span class="topbar-label">CORE 01</span><button class="live-vision-button" id="liveVisionButton" type="button" aria-haspopup="dialog" aria-controls="visionHud"><span class="live-dot"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5zM17 10l4-2v8l-4-2z"/></svg><span>Live Vision</span></button><button class="icon-button voice-top" id="voiceTop" title="Toggle voice mode" aria-label="Toggle voice mode" aria-pressed="false">🎙</button></div>
+      <div class="topbar-right"><span class="topbar-label">CORE 01</span><button class="live-vision-button" id="liveVisionButton" type="button" aria-haspopup="dialog" aria-controls="visionHud"><span class="live-dot"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5zM17 10l4-2v8l-4-2z"/></svg><span>Live Vision</span></button><button class="icon-button voice-top" id="voiceTop" title="Tap to speak; Manas will reply aloud" aria-label="Tap to speak; Manas will reply aloud" aria-pressed="false">🎙</button></div>
     </header>
     <div class="page" id="page"></div>
   </main>
@@ -52,7 +52,7 @@
     </section>
     <section class="hud-card voice-card">
       <div class="hud-card-title"><span class="hud-icon violet-icon">◖</span><div><small>VOICE ENGINE</small><strong>Vocal synced</strong></div></div>
-      <div class="telemetry-line"><span class="telemetry-dot"></span><span class="vocal-state" id="vocalState">Standby</span><b>WEB SPEECH</b></div>
+      <div class="telemetry-line"><span class="telemetry-dot"></span><span class="vocal-state" id="vocalState" role="status" aria-live="polite">Standby</span><b>WEB SPEECH</b></div>
       <div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     </section>
     <section class="hud-card runtime-card">
