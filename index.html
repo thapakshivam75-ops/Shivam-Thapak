@@ -3,9 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#080a10">
+  <meta name="theme-color" content="#030508">
   <meta name="description" content="Manas personal AI assistant console">
   <title>Manas — Intelligence Core</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -88,5 +91,86 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/app.js" defer></script>
 <script>try{const mode=localStorage.getItem("manas-mode")||"jarvis";document.querySelectorAll(".persona-pill").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode))}catch{}</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+  let THREE, sceneRuntime, currentCanvas;
+  const moduleUrls = {
+    core: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
+    composer: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js',
+    renderPass: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js',
+    bloom: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js',
+    room: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js'
+  };
+  const vertexShader = `
+    uniform float uTime; uniform vec2 uPointer;
+    varying vec3 vNormal; varying vec3 vPosition; varying float vPulse;
+    void main(){
+      vec3 p=position; vec3 n=normalize(normal);
+      float wave=sin(p.x*4.2+uTime*.72)*cos(p.y*3.6-uTime*.5)*sin(p.z*3.8+uTime*.43);
+      float pointer=exp(-length(uv-uPointer)*7.0);
+      float displacement=wave*.026+pointer*sin(uTime*1.7+length(p.xy)*8.0)*.072;
+      p+=n*displacement; vPulse=pointer;
+      vec4 mvPosition=modelViewMatrix*vec4(p,1.0);
+      vPosition=mvPosition.xyz; vNormal=normalize(normalMatrix*n);
+      gl_Position=projectionMatrix*mvPosition;
+    }`;
+  const fragmentShader = `
+    uniform float uTime; varying vec3 vNormal; varying vec3 vPosition; varying float vPulse;
+    void main(){
+      vec3 N=normalize(vNormal); vec3 V=normalize(-vPosition);
+      float fresnel=pow(1.0-max(dot(N,V),0.0),2.35);
+      float flow=.5+.5*sin(vPosition.y*3.6+vPosition.x*2.2+uTime*.5);
+      vec3 cyan=vec3(.08,.88,1.0), violet=vec3(.53,.28,1.0), gold=vec3(1.0,.67,.25);
+      vec3 spectral=mix(cyan,violet,smoothstep(.08,.78,flow));
+      spectral=mix(spectral,gold,smoothstep(.78,.98,flow)*.72);
+      float caustic=pow(max(0.0,sin(vPosition.x*8.0+vPosition.z*5.0-uTime*.8)),8.0);
+      vec3 inner=vec3(.035,.065,.105)+spectral*(.19+fresnel*.68)+cyan*caustic*.4;
+      vec3 color=mix(inner,spectral,.28+fresnel*.52);
+      color+=spectral*(.22+vPulse*.65)*fresnel;
+      gl_FragColor=vec4(color,clamp(.52+fresnel*.42,0.0,.96));
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`;
+  async function loadThree(){
+    if(THREE)return THREE;
+    const [core, composer, renderPass, bloom, room] = await Promise.all([
+      import(moduleUrls.core), import(moduleUrls.composer), import(moduleUrls.renderPass),
+      import(moduleUrls.bloom), import(moduleUrls.room)
+    ]);
+    THREE={...core,EffectComposer:composer.EffectComposer,RenderPass:renderPass.RenderPass,UnrealBloomPass:bloom.UnrealBloomPass,RoomEnvironment:room.RoomEnvironment};
+    return THREE;
+  }
+  function attachOrb(){
+    const composer=document.querySelector('.composer');
+    if(!composer){sceneRuntime?.dispose();sceneRuntime=null;currentCanvas=null;return}
+    let canvas=composer.querySelector('.spatial-orb');
+    if(!canvas){canvas=document.createElement('canvas');canvas.className='spatial-orb';canvas.setAttribute('aria-hidden','true');composer.prepend(canvas)}
+    if(canvas!==currentCanvas){sceneRuntime?.dispose();currentCanvas=canvas;loadThree().then(lib=>{
+      if(!canvas.isConnected)return;
+      const renderer=new lib.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setClearColor(0x000000,0);
+      const scene=new lib.Scene(),camera=new lib.PerspectiveCamera(34,1,.1,20);camera.position.z=3.25;
+      const pmrem=new lib.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new lib.RoomEnvironment(),.04).texture;
+      const group=new lib.Group();scene.add(group);
+      const geometry=new lib.SphereGeometry(1,192,144);
+      const glass=new lib.Mesh(geometry,new lib.MeshPhysicalMaterial({color:0xb9efff,metalness:.02,roughness:.055,transmission:1,thickness:1.25,ior:1.36,iridescence:1,iridescenceIOR:1.3,iridescenceThicknessRange:[140,680],clearcoat:1,clearcoatRoughness:.03,envMapIntensity:1.55}));glass.scale.setScalar(.79);group.add(glass);
+      const fluid=new lib.Mesh(geometry,new lib.ShaderMaterial({uniforms:{uTime:{value:0},uPointer:{value:new lib.Vector2(.5,.5)}},vertexShader,fragmentShader,transparent:true,depthWrite:false,side:lib.DoubleSide,blending:lib.NormalBlending}));fluid.scale.setScalar(.84);group.add(fluid);
+      const rim=new lib.Mesh(new lib.SphereGeometry(1.025,160,112),new lib.MeshBasicMaterial({color:0x85eaff,transparent:true,opacity:.065,side:lib.BackSide}));group.add(rim);
+      const pointLight=new lib.PointLight(0x72eaff,7,8);pointLight.position.set(-1.4,1.8,2.2);scene.add(pointLight);
+      const warmLight=new lib.PointLight(0xffbd69,4,7);warmLight.position.set(1.5,-.9,1.8);scene.add(warmLight);
+      const composerFx=new lib.EffectComposer(renderer);composerFx.addPass(new lib.RenderPass(scene,camera));composerFx.addPass(new lib.UnrealBloomPass(new lib.Vector2(160,160),.72,.48,.62));
+      let pointer={x:.5,y:.5},target={x:.5,y:.5},frame=0,disposed=false;
+      const resize=()=>{if(disposed)return;const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);composerFx.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()};
+      const move=e=>{const rect=canvas.getBoundingClientRect();target.x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));target.y=Math.max(0,Math.min(1,1-(e.clientY-rect.top)/rect.height))};
+      const leave=()=>{target={x:.5,y:.5}};window.addEventListener('pointermove',move,{passive:true});canvas.addEventListener('pointerleave',leave,{passive:true});
+      const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
+      const clock=new lib.Clock();
+      const render=()=>{if(disposed||!canvas.isConnected)return;frame=requestAnimationFrame(render);const t=clock.getElapsedTime();pointer.x+=(target.x-pointer.x)*.16;pointer.y+=(target.y-pointer.y)*.16;fluid.material.uniforms.uTime.value=t;fluid.material.uniforms.uPointer.value.set(pointer.x,pointer.y);group.rotation.y+=(pointer.x-.5)*.0028;group.rotation.x+=(.5-pointer.y)*.0028;group.rotation.z=Math.sin(t*.18)*.025;composerFx.render()};render();
+      sceneRuntime={dispose(){disposed=true;cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('pointermove',move);canvas.removeEventListener('pointerleave',leave);geometry.dispose();glass.material.dispose();fluid.material.dispose();rim.geometry.dispose();rim.material.dispose();composerFx.dispose();renderer.dispose();pmrem.dispose()}};
+    }).catch(error=>{console.warn('[Manas orb] WebGL renderer unavailable; using the glass CSS fallback.',error);canvas.classList.add('spatial-orb-fallback')})}
+  }
+  const mutationObserver=new MutationObserver(attachOrb);mutationObserver.observe(document.body,{childList:true,subtree:true});attachOrb();
+  window.addEventListener('resize',attachOrb,{passive:true});
+</script>
 </body>
 </html>
