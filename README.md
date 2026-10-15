@@ -23,6 +23,23 @@ In local/private mode, the server extracts a small set of explicitly shared, non
 
 Questions that look time-sensitive may use the DuckDuckGo scraper. It can throttle or block scraper traffic; when that happens, Manas is instructed to say it could not verify live details. Search citations link to result URLs.
 
+## Chat attachments, vision, and image tools
+
+The chat composer’s **＋** menu accepts up to five attachments per message: PDF, DOCX, TXT, CSV, Markdown, and common source/code formats, plus JPEG/PNG/WebP images. Browser-selected files are only sent after the user submits the chat message. Each image/PDF/DOCX is limited to 4 MB; text/code files are limited to 2 MB; combined uploads are limited to 6 MB. PDF and DOCX text extraction runs on the Node server with `pdf-parse` and `mammoth`. Scanned PDFs do not get OCR. Treat attached content as sent to the AI provider configured in `.env`.
+
+Text/code/PDF/DOCX attachments work with OpenAI-compatible providers or Ollama. Image understanding uses OpenAI-compatible image content blocks. For Groq, set these server-side in the project `.env` (keep `AI_API_KEY` private):
+
+```dotenv
+AI_API_FORMAT=openai
+AI_BASE_URL=https://api.groq.com/openai/v1
+AI_MODEL=openai/gpt-oss-20b
+AI_VISION_MODEL=qwen/qwen3.8-27b
+```
+
+Groq vision requires a valid API key and a model enabled for the account; free access is quota-limited. Local Ollama configurations do not support this Groq vision route. The Canvas scratchpad saves its Markdown in browser `localStorage` on that device.
+
+The **Create image** menu and matching chat prompts use Pollinations’ legacy no-key image URL from the server, so the prompt is not exposed as a browser URL and no key is needed by this app. It is best-effort: Pollinations’ newer documented API uses authentication, and the legacy endpoint may be unavailable or rate-limited. Manas shows an error if it cannot return an image; no paid API is called as a fallback.
+
 ## Provider choice for hosted chat
 
 The server already implements OpenAI Chat Completions (`/chat/completions`), bearer authorization, and response parsing. **Groq is the simplest fit**: its [OpenAI compatibility docs](https://console.groq.com/docs/openai) specify the base URL `https://api.groq.com/openai/v1`. As checked in October 2026, Groq lists `openai/gpt-oss-20b` as the recommended successor for the retired Llama 3.1 8B Instant model. Groq's [free plan is quota-limited](https://console.groq.com/docs/rate-limits) (per-model RPM/RPD/token caps); quotas vary and can change, so check the account/model limits. Free access is not unlimited or a reliability guarantee.

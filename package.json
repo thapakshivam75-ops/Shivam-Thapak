@@ -11,6 +11,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "duck-duck-scrape": "^2.2.7"
+    "duck-duck-scrape": "^2.2.7",
+    "pdf-parse": "^2.4.5",
+    "mammoth": "^1.13.0"
   }
 }

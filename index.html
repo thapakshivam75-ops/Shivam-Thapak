@@ -64,6 +64,13 @@
     <div class="hud-bottom"><span class="pulse-dot"></span><span>ALL SYSTEMS MONITORED</span><small>MANAS · v1.0</small></div>
   </aside>
 </div>
+<div class="canvas-overlay" id="canvasOverlay" hidden>
+  <button class="canvas-backdrop" id="canvasBackdrop" aria-label="Close canvas"></button>
+  <section class="canvas-panel" role="dialog" aria-modal="true" aria-labelledby="canvasTitle">
+    <header class="canvas-header"><div><span class="eyebrow">WORKSPACE</span><h2 id="canvasTitle">Canvas / Notes</h2></div><div class="canvas-actions"><button class="subtle-button" id="canvasSave" type="button">Save notes</button><button class="icon-button" id="canvasClose" type="button" aria-label="Close canvas">×</button></div></header>
+    <div class="canvas-body"><div class="canvas-guide"><strong>Scratchpad</strong><p>Draft ideas, notes, or Markdown here. Notes are saved only in this browser on this device.</p><span>Markdown supported</span></div><textarea id="canvasText" spellcheck="true" placeholder="# Working notes\n\nCapture an idea…"></textarea></div>
+  </section>
+</div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/app.js" defer></script>
 <script>try{const mode=localStorage.getItem("manas-mode")||"jarvis";document.querySelectorAll(".persona-pill").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode))}catch{}</script>

@@ -17,7 +17,7 @@ test('public Render profile streams hosted chat without exposing shared private 
   await new Promise(resolve=>provider.listen(0,'127.0.0.1',resolve));
   const providerPort=provider.address().port;
   const port=34128;
-  const childEnv={...process.env};delete childEnv.HOST;Object.assign(childEnv,{PORT:String(port),NODE_ENV:'production',PUBLIC_CHAT_ONLY:'true',TRUST_PROXY:'false',AI_API_FORMAT:'openai',AI_BASE_URL:`http://127.0.0.1:${providerPort}/v1`,AI_API_KEY:'test-server-only-key',AI_MODEL:'test-model',AI_MAX_OUTPUT_TOKENS:'96',ASSISTANT_PASSWORD:''});
+  const childEnv={...process.env};delete childEnv.HOST;Object.assign(childEnv,{PORT:String(port),NODE_ENV:'production',PUBLIC_CHAT_ONLY:'true',TRUST_PROXY:'false',AI_API_FORMAT:'openai',AI_BASE_URL:`http://127.0.0.1:${providerPort}/v1`,AI_API_KEY:'test-server-only-key',AI_MODEL:'test-model',AI_VISION_MODEL:'test-vision-model',AI_MAX_OUTPUT_TOKENS:'96',ASSISTANT_PASSWORD:''});
   const child=spawn(process.execPath,['server.mjs'],{env:childEnv,stdio:'ignore'});
   t.after(async()=>{child.kill();await new Promise(resolve=>provider.close(resolve))});
   let ready=false;
@@ -32,6 +32,10 @@ test('public Render profile streams hosted chat without exposing shared private 
   assert.equal(received.url,'/v1/chat/completions');assert.equal(received.authorization,'Bearer test-server-only-key');
   assert.equal(received.body.stream,true);assert.equal(received.body.max_completion_tokens,96);
   assert.match(received.body.messages[0].content,/Coding Partner/);assert.match(received.body.messages[0].content,/User prefers Hindi/);
+  const attachment=await fetch(`http://127.0.0.1:${port}/api/chat/stream`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'Summarize the attached file',attachments:[{name:'notes.txt',kind:'text',text:'Project deadline is Friday.'}]})});
+  assert.equal(attachment.status,200);await attachment.text();assert.match(received.body.messages[0].content,/thorough, well-organized answer/);assert.match(received.body.messages[1].content,/Project deadline is Friday/);
+  const vision=await fetch(`http://127.0.0.1:${port}/api/chat/stream`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'What is in this image?',attachments:[{name:'tiny.png',kind:'image',dataUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l0sAAAAASUVORK5CYII='}]})});
+  assert.equal(vision.status,200);await vision.text();assert.equal(received.body.model,'test-vision-model');assert.ok(received.body.messages[1].content.some(x=>x.type==='image_url'&&x.image_url.url.startsWith('data:image/png;base64,')));
   const refreshed=await fetch(`http://127.0.0.1:${port}/api/memory/refresh`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({conversation:[{user:'I prefer Hindi responses.',assistant:'Understood.'}],facts:[]})});
   assert.equal(refreshed.status,200);assert.deepEqual((await refreshed.json()).facts,['User prefers Hindi']);
   assert.deepEqual(await(await fetch(`http://127.0.0.1:${port}/api/data`)).json(),{chats:[],tasks:[],analyses:[]});
