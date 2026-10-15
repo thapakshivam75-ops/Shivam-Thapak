@@ -28,6 +28,7 @@ const publicChatOnly = env.PUBLIC_CHAT_ONLY === 'true';
 const cookieName = 'assistant_session';
 const sessions = new Set();
 let activeChatRequests=0;
+const generatedImageCache=new Map();
 const clientIp = req => env.TRUST_PROXY === 'true' ? (req.headers['x-forwarded-for']||'').split(',').at(-1)?.trim() || req.socket.remoteAddress || '' : req.socket.remoteAddress || '';
 const rateBuckets = new Map();
 const chatLimit = (req,res) => {
@@ -137,13 +138,18 @@ async function prepareAttachments(items){
   const context=docs.map(d=>`--- Begin untrusted file: ${d.name} ---\n${d.text}\n--- End file ---`).join('\n\n');
   return {content:images.length?[{type:'text',text:context},{type:'text',text:'Analyze the attached image(s) carefully. Describe visible details and answer the user request with appropriate uncertainty.'},...images.map(x=>({type:'image_url',image_url:{url:x.dataUrl,detail:'high'}}))]:context||null,hasUploads:pieces.length>0,imageCount:images.length};
 }
-async function createPollinationsImage(prompt){
-  const target=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
-  const response=await fetch(target,{redirect:'error',signal:AbortSignal.timeout(120000)});
-  if(!response.ok)throw new Error(`Image generation service returned HTTP ${response.status}. Its legacy no-key endpoint may be unavailable or rate-limited.`);
-  const type=response.headers.get('content-type')||'';if(!type.startsWith('image/'))throw new Error('Image generation service did not return an image.');
+async function createPollinationsImage(prompt,seed){
+  const target=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+  const response=await fetch(target,{signal:AbortSignal.timeout(120000)});
+  if(!response.ok)throw new Error(`No-key image generation returned HTTP ${response.status}. Pollinations may now require an API key or may be rate-limiting legacy requests.`);
+  const type=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();if(!['image/jpeg','image/png','image/webp'].includes(type))throw new Error('Image generation service did not return a supported JPEG, PNG, or WebP image.');
   const declared=Number(response.headers.get('content-length')||0);if(declared>8*1024*1024)throw new Error('Generated image exceeds the 8 MB limit.');
   const bytes=Buffer.from(await response.arrayBuffer());if(!bytes.length||bytes.length>8*1024*1024)throw new Error('Generated image is empty or exceeds the 8 MB limit.');return {bytes,type};
+}
+function cacheGeneratedImage(image,seed){
+  const now=Date.now();for(const [id,item] of generatedImageCache)if(item.expiresAt<=now)generatedImageCache.delete(id);
+  while(generatedImageCache.size>=16)generatedImageCache.delete(generatedImageCache.keys().next().value);
+  const id=crypto.randomUUID();generatedImageCache.set(id,{...image,seed,expiresAt:now+60*60*1000});return {url:`/api/images/generated/${id}`,seed,type:image.type};
 }
 
 const routes = async (req,res) => {
@@ -172,7 +178,7 @@ const routes = async (req,res) => {
   }
   if(req.method==='POST'&&u.pathname==='/api/login'){const b=await bodyOf(req);if(!token||b.password!==token)return send(res,401,{error:'Incorrect password'});const s=crypto.randomBytes(32).toString('hex');sessions.add(s);res.writeHead(200,{'set-cookie':`${cookieName}=${s}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400`,'content-type':'application/json'});return res.end('{"ok":true}');}
   if(publicChatOnly&&req.method==='GET'&&u.pathname==='/api/data') return send(res,200,{chats:[],tasks:[],analyses:[]});
-  if(publicChatOnly&&!(req.method==='POST'&&['/api/chat','/api/chat/stream','/api/memory/refresh','/api/images/create','/api/vision/analyze'].includes(u.pathname))&&!(req.method==='GET'&&['/','/index.html','/style.css','/app.js','/api/health'].includes(u.pathname))) return send(res,403,{error:'This public deployment is chat-only. Personal tasks and message analysis require a private account.'});
+  if(publicChatOnly&&!(req.method==='POST'&&['/api/chat','/api/chat/stream','/api/memory/refresh','/api/images/create','/api/vision/analyze'].includes(u.pathname))&&!(req.method==='GET'&&(['/','/index.html','/style.css','/app.js','/api/health'].includes(u.pathname)||u.pathname.startsWith('/api/images/generated/')))) return send(res,403,{error:'This public deployment is chat-only. Personal tasks and message analysis require a private account.'});
   if(!authorized(req)) return send(res,401,{error:'Sign in to use this assistant.'});
   if(req.method==='GET'&&u.pathname==='/api/memory')return send(res,200,{facts:memory.facts});
   if(req.method==='DELETE'&&u.pathname==='/api/memory'){memory={facts:[]};saveMemory();return send(res,200,{ok:true});}
@@ -185,8 +191,18 @@ const routes = async (req,res) => {
   if(req.method==='DELETE'&&u.pathname==='/api/data'){store.chats=[];store.tasks=[];store.analyses=[];save();return send(res,200,{ok:true});}
   if(req.method==='POST'&&u.pathname==='/api/images/create'){
     if(!chatLimit(req,res))return;
-    const body=await bodyOf(req),prompt=String(body.prompt||'').trim();if(!prompt)return send(res,400,{error:'Describe the image you want to create.'});if(prompt.length>500)return send(res,413,{error:'Image prompts must be 500 characters or fewer.'});
-    try{const image=await createPollinationsImage(prompt);res.writeHead(200,{'content-type':image.type,'cache-control':'no-store','x-content-type-options':'nosniff'});return res.end(image.bytes)}catch(e){return send(res,503,{error:e.message||'Image generation is temporarily unavailable.'})}
+    const body=await bodyOf(req),prompt=String(body.prompt||'').trim(),count=Math.max(1,Math.min(4,Math.trunc(Number(body.count)||1)));if(!prompt)return send(res,400,{error:'Describe the image you want to create.'});if(prompt.length>500)return send(res,413,{error:'Image prompts must be 500 characters or fewer.'});
+    if(activeChatRequests>=3){res.writeHead(503,{'retry-after':'10'});return res.end(JSON.stringify({error:'The assistant is busy. Please retry in a few seconds.'}))}
+    activeChatRequests++;
+    try{
+      const results=await Promise.all(Array.from({length:count},async()=>{const seed=crypto.randomInt(1,2**31-1);try{return cacheGeneratedImage(await createPollinationsImage(prompt,seed),seed)}catch(e){return {error:e.message}}}));
+      const images=results.filter(x=>x.url),errors=results.filter(x=>x.error);if(!images.length)return send(res,503,{error:errors[0]?.error||'Image generation is temporarily unavailable.'});
+      return send(res,200,{images,requested:count,generated:images.length,error:errors[0]?.error||null});
+    }finally{activeChatRequests--}
+  }
+  if(req.method==='GET'&&u.pathname.startsWith('/api/images/generated/')){
+    const id=u.pathname.split('/').pop(),image=generatedImageCache.get(id);if(!image||image.expiresAt<=Date.now()){generatedImageCache.delete(id);return send(res,404,{error:'This generated image expired. Generate it again to view or download.'})}
+    const extension=image.type==='image/png'?'png':image.type==='image/webp'?'webp':'jpg',download=u.searchParams.get('download')==='1';res.writeHead(200,{'content-type':image.type,'cache-control':'private, max-age=300','x-content-type-options':'nosniff','content-length':String(image.bytes.length),...(download?{'content-disposition':`attachment; filename="manas-image-${image.seed}.${extension}"`}:{})});return res.end(image.bytes)
   }
   if(req.method==='POST'&&u.pathname==='/api/vision/analyze'){
     if(!chatLimit(req,res))return;

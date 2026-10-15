@@ -38,7 +38,7 @@ AI_VISION_MODEL=qwen/qwen3.8-27b
 
 Groq vision requires a valid API key and a model enabled for the account; free access is quota-limited. Local Ollama configurations do not support this Groq vision route. The Canvas scratchpad saves its Markdown in browser `localStorage` on that device.
 
-The **Create image** menu and matching chat prompts use Pollinations’ legacy no-key image URL from the server, so the prompt is not exposed as a browser URL and no key is needed by this app. It is best-effort: Pollinations’ newer documented API uses authentication, and the legacy endpoint may be unavailable or rate-limited. Manas shows an error if it cannot return an image; no paid API is called as a fallback.
+The **Create image** menu and matching typed or spoken prompts use Pollinations’ legacy `image.pollinations.ai/prompt` URL from the server, with random seeds and the requested Flux model. The endpoint currently returns up to four variations in parallel, displayed in the chat with download and full-size preview controls. Generated images are cached in server memory for one hour. This legacy no-key integration is best-effort: Pollinations’ current API documentation says generation requires authentication, and its documented legacy raw-key access is rate-limited; its old no-key URL may be unavailable. Manas shows an error if it cannot return an image. There is no guarantee of unlimited or instant generations, and no paid API is used as a fallback. Public generation also uses the existing IP rate limit (12 requests per 10 minutes).
 
 ### Live Vision
 
