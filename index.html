@@ -40,7 +40,7 @@
       <nav class="persona-switcher" aria-label="Assistant persona">
         <button class="persona-pill active" type="button" data-mode="jarvis" onclick="localStorage.setItem('manas-mode','jarvis');const s=document.getElementById('assistantMode');if(s){s.value='jarvis';s.dispatchEvent(new Event('change'))}">Jarvis Core</button>
         <button class="persona-pill" type="button" data-mode="coding" onclick="localStorage.setItem('manas-mode','coding');const s=document.getElementById('assistantMode');if(s){s.value='coding';s.dispatchEvent(new Event('change'))}">Code Architect</button>
-        <button class="persona-pill" type="button" data-mode="creative" onclick="localStorage.setItem('manas-mode','creative');const s=document.getElementById('assistantMode');if(s){s.value='creative';s.dispatchEvent(new Event('change'))}">Brainstorm</button>
+        <button class="persona-pill" type="button" data-mode="creative" onclick="localStorage.setItem('manas-mode','creative');const s=document.getElementById('assistantMode');if(s){s.value='creative';s.dispatchEvent(new Event('change'))}">Creative Engine</button>
       </nav>
       <div class="topbar-right"><span class="topbar-label">CORE 01</span><button class="live-vision-button" id="liveVisionButton" type="button" aria-haspopup="dialog" aria-controls="visionHud"><span class="live-dot"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5zM17 10l4-2v8l-4-2z"/></svg><span>Live Vision</span></button><button class="tool-button wake-toggle" id="wakeWordToggle" type="button" aria-pressed="false" title="Enable hands-free Hey Manas listening">Hey Manas: off</button><button class="icon-button voice-top" id="voiceTop" title="Tap to speak; Manas will reply aloud" aria-label="Tap to speak; Manas will reply aloud" aria-pressed="false">🎙</button></div>
     </header>
@@ -94,83 +94,51 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
   let THREE, sceneRuntime, currentCanvas;
-  const moduleUrls = {
-    core: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
-    composer: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js',
-    renderPass: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js',
-    bloom: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js',
-    room: 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js'
-  };
-  const vertexShader = `
-    uniform float uTime; uniform vec2 uPointer;
-    varying vec3 vNormal; varying vec3 vPosition; varying float vPulse;
-    void main(){
-      vec3 p=position; vec3 n=normalize(normal);
-      float wave=sin(p.x*4.2+uTime*.72)*cos(p.y*3.6-uTime*.5)*sin(p.z*3.8+uTime*.43);
-      float pointer=exp(-length(uv-uPointer)*7.0);
-      float displacement=wave*.026+pointer*sin(uTime*1.7+length(p.xy)*8.0)*.072;
-      p+=n*displacement; vPulse=pointer;
-      vec4 mvPosition=modelViewMatrix*vec4(p,1.0);
-      vPosition=mvPosition.xyz; vNormal=normalize(normalMatrix*n);
-      gl_Position=projectionMatrix*mvPosition;
-    }`;
-  const fragmentShader = `
-    uniform float uTime; varying vec3 vNormal; varying vec3 vPosition; varying float vPulse;
-    void main(){
-      vec3 N=normalize(vNormal); vec3 V=normalize(-vPosition);
-      float fresnel=pow(1.0-max(dot(N,V),0.0),2.35);
-      float flow=.5+.5*sin(vPosition.y*3.6+vPosition.x*2.2+uTime*.5);
-      vec3 cyan=vec3(.08,.88,1.0), violet=vec3(.53,.28,1.0), gold=vec3(1.0,.67,.25);
-      vec3 spectral=mix(cyan,violet,smoothstep(.08,.78,flow));
-      spectral=mix(spectral,gold,smoothstep(.78,.98,flow)*.72);
-      float caustic=pow(max(0.0,sin(vPosition.x*8.0+vPosition.z*5.0-uTime*.8)),8.0);
-      vec3 inner=vec3(.035,.065,.105)+spectral*(.19+fresnel*.68)+cyan*caustic*.4;
-      vec3 color=mix(inner,spectral,.28+fresnel*.52);
-      color+=spectral*(.22+vPulse*.65)*fresnel;
-      gl_FragColor=vec4(color,clamp(.52+fresnel*.42,0.0,.96));
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
-    }`;
-  async function loadThree(){
-    if(THREE)return THREE;
-    const [core, composer, renderPass, bloom, room] = await Promise.all([
-      import(moduleUrls.core), import(moduleUrls.composer), import(moduleUrls.renderPass),
-      import(moduleUrls.bloom), import(moduleUrls.room)
-    ]);
-    THREE={...core,EffectComposer:composer.EffectComposer,RenderPass:renderPass.RenderPass,UnrealBloomPass:bloom.UnrealBloomPass,RoomEnvironment:room.RoomEnvironment};
-    return THREE;
-  }
-  function attachOrb(){
-    const composer=document.querySelector('.composer');
-    if(!composer){sceneRuntime?.dispose();sceneRuntime=null;currentCanvas=null;return}
-    let canvas=composer.querySelector('.spatial-orb');
-    if(!canvas){canvas=document.createElement('canvas');canvas.className='spatial-orb';canvas.setAttribute('aria-hidden','true');composer.prepend(canvas)}
-    if(canvas!==currentCanvas){sceneRuntime?.dispose();currentCanvas=canvas;loadThree().then(lib=>{
-      if(!canvas.isConnected)return;
-      const renderer=new lib.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setClearColor(0x000000,0);
-      const scene=new lib.Scene(),camera=new lib.PerspectiveCamera(34,1,.1,20);camera.position.z=3.25;
-      const pmrem=new lib.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new lib.RoomEnvironment(),.04).texture;
-      const group=new lib.Group();scene.add(group);
-      const geometry=new lib.SphereGeometry(1,192,144);
-      const glass=new lib.Mesh(geometry,new lib.MeshPhysicalMaterial({color:0xb9efff,metalness:.02,roughness:.055,transmission:1,thickness:1.25,ior:1.36,iridescence:1,iridescenceIOR:1.3,iridescenceThicknessRange:[140,680],clearcoat:1,clearcoatRoughness:.03,envMapIntensity:1.55}));glass.scale.setScalar(.79);group.add(glass);
-      const fluid=new lib.Mesh(geometry,new lib.ShaderMaterial({uniforms:{uTime:{value:0},uPointer:{value:new lib.Vector2(.5,.5)}},vertexShader,fragmentShader,transparent:true,depthWrite:false,side:lib.DoubleSide,blending:lib.NormalBlending}));fluid.scale.setScalar(.84);group.add(fluid);
-      const rim=new lib.Mesh(new lib.SphereGeometry(1.025,160,112),new lib.MeshBasicMaterial({color:0x85eaff,transparent:true,opacity:.065,side:lib.BackSide}));group.add(rim);
-      const pointLight=new lib.PointLight(0x72eaff,7,8);pointLight.position.set(-1.4,1.8,2.2);scene.add(pointLight);
-      const warmLight=new lib.PointLight(0xffbd69,4,7);warmLight.position.set(1.5,-.9,1.8);scene.add(warmLight);
-      const composerFx=new lib.EffectComposer(renderer);composerFx.addPass(new lib.RenderPass(scene,camera));composerFx.addPass(new lib.UnrealBloomPass(new lib.Vector2(160,160),.72,.48,.62));
-      let pointer={x:.5,y:.5},target={x:.5,y:.5},frame=0,disposed=false;
-      const resize=()=>{if(disposed)return;const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);composerFx.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()};
-      const move=e=>{const rect=canvas.getBoundingClientRect();target.x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));target.y=Math.max(0,Math.min(1,1-(e.clientY-rect.top)/rect.height))};
-      const leave=()=>{target={x:.5,y:.5}};window.addEventListener('pointermove',move,{passive:true});canvas.addEventListener('pointerleave',leave,{passive:true});
-      const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
-      const clock=new lib.Clock();
-      const render=()=>{if(disposed||!canvas.isConnected)return;frame=requestAnimationFrame(render);const t=clock.getElapsedTime();pointer.x+=(target.x-pointer.x)*.16;pointer.y+=(target.y-pointer.y)*.16;fluid.material.uniforms.uTime.value=t;fluid.material.uniforms.uPointer.value.set(pointer.x,pointer.y);group.rotation.y+=(pointer.x-.5)*.0028;group.rotation.x+=(.5-pointer.y)*.0028;group.rotation.z=Math.sin(t*.18)*.025;composerFx.render()};render();
-      sceneRuntime={dispose(){disposed=true;cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('pointermove',move);canvas.removeEventListener('pointerleave',leave);geometry.dispose();glass.material.dispose();fluid.material.dispose();rim.geometry.dispose();rim.material.dispose();composerFx.dispose();renderer.dispose();pmrem.dispose()}};
-    }).catch(error=>{console.warn('[Manas orb] WebGL renderer unavailable; using the glass CSS fallback.',error);canvas.classList.add('spatial-orb-fallback')})}
-  }
-  const mutationObserver=new MutationObserver(attachOrb);mutationObserver.observe(document.body,{childList:true,subtree:true});attachOrb();
-  window.addEventListener('resize',attachOrb,{passive:true});
+  const moduleUrls={core:'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',composer:'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js',renderPass:'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js',bloom:'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js'};
+  const vertexShader=`
+    uniform float uTime; uniform float uTheme;
+    varying vec3 vNormal; varying vec3 vPosition; varying vec3 vPoint;
+    float hash31(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+    float noise3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(hash31(i),hash31(i+vec3(1,0,0)),f.x),mix(hash31(i+vec3(0,1,0)),hash31(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash31(i+vec3(0,0,1)),hash31(i+vec3(1,0,1)),f.x),mix(hash31(i+vec3(0,1,1)),hash31(i+vec3(1,1,1)),f.x),f.y),f.z);}
+    void main(){vec3 p=position;float n=noise3(p*4.3+uTime*.025);float d=sin(p.x*5.0+uTime*.24)*cos(p.y*4.0-uTime*.2)*.009;if(uTheme<.5)d+=((n-.5)*.024);else if(uTheme<1.5)d+=sin(p.x*8.0+p.y*9.0+uTime)*.009;else d+=(noise3(p*9.0)-.5)*.018;p+=normal*d;vPoint=p;vNormal=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(p,1.0);vPosition=mv.xyz;gl_Position=projectionMatrix*mv;}`;
+  const planetShader=`
+    uniform float uTime; uniform float uTheme; uniform float uWeight;
+    varying vec3 vNormal; varying vec3 vPosition; varying vec3 vPoint;
+    float hash31(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+    float noise3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(hash31(i),hash31(i+vec3(1,0,0)),f.x),mix(hash31(i+vec3(0,1,0)),hash31(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash31(i+vec3(0,0,1)),hash31(i+vec3(1,0,1)),f.x),mix(hash31(i+vec3(0,1,1)),hash31(i+vec3(1,1,1)),f.x),f.y),f.z);}
+    float fbm(vec3 p){float v=0.0,a=.5;for(int i=0;i<5;i++){v+=noise3(p)*a;p*=2.03;a*=.5;}return v;}
+    void main(){vec3 N=normalize(vNormal);vec3 V=normalize(-vPosition);float light=max(dot(N,normalize(vec3(-.45,.68,1.0))),0.0);float n=fbm(vPoint*5.5);vec3 color=vec3(.02);float emit=0.0;
+      if(uTheme<.5){float vein=1.0-smoothstep(.012,.075,abs(fbm(vPoint*7.0+vec3(0,uTime*.018,0))-.5));float shelf=smoothstep(.51,.64,n);color=mix(vec3(.045,.008,.012),vec3(.24,.018,.012),shelf);color=mix(color,vec3(.92,.09,.012),vein*.86);color=mix(color,vec3(1.0,.46,.075),pow(vein,4.0));emit=vein*2.3+pow(vein,5.0)*3.0;color*=.28+light*.95;}
+      else if(uTheme<1.5){float turbulence=fbm(vPoint*8.0+uTime*.16);float core=pow(max(0.0,1.0-length(vPoint.xy)*.83),1.65);float cells=pow(max(0.0,sin(vPoint.x*20.0+vPoint.y*15.0+vPoint.z*8.0+uTime*.8)),8.0);color=mix(vec3(.015,.16,.42),vec3(.08,.66,1.0),turbulence);color=mix(color,vec3(.75,.95,1.0),core*.93);emit=1.0+turbulence*1.3+core*3.8+cells*.7;color*=.68+light*.65;}
+      else{float craterNoise=fbm(vPoint*11.0);float pits=pow(max(0.0,1.0-abs(noise3(vPoint*17.0)-.49)*14.0),3.0);float ridge=smoothstep(.58,.73,craterNoise);color=mix(vec3(.105,.075,.20),vec3(.42,.29,.62),craterNoise);color=mix(color,vec3(.67,.49,.78),pits*.48);color=mix(color,vec3(.19,.12,.32),ridge*.45);color*=.24+light*.96;emit=pow(1.0-max(dot(N,V),0.0),2.2)*.72;}
+      float fresnel=pow(1.0-max(dot(N,V),0.0),3.2);vec3 rim=uTheme<.5?vec3(1.0,.14,.035):(uTheme<1.5?vec3(.08,.72,1.0):vec3(.56,.3,.96));color+=rim*fresnel*(.45+emit*.17);color+=rim*emit*.52;gl_FragColor=vec4(color,clamp(uWeight,0.0,1.0));}`;
+  const atmosphereShader=`uniform float uTheme;uniform float uWeight;varying vec3 vNormal;varying vec3 vPosition;void main(){vec3 N=normalize(vNormal),V=normalize(-vPosition);float f=pow(1.0-max(dot(N,V),0.0),2.35);vec3 c=uTheme<.5?vec3(1.0,.075,.018):(uTheme<1.5?vec3(.02,.56,1.0):vec3(.53,.24,.92));gl_FragColor=vec4(c,f*.58*uWeight);}`;
+  const pointsVertex=`attribute float aTheme;attribute float aSize;attribute float aPhase;attribute vec3 aColor;uniform float uTime;uniform float uWeight0;uniform float uWeight1;uniform float uWeight2;uniform float uPixelRatio;varying vec3 vColor;varying float vAlpha;void main(){vec3 p=position;p.y+=sin(uTime*.24+aPhase)*.018;p.x+=cos(uTime*.18+aPhase)*.012;vec4 mv=modelViewMatrix*vec4(p,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(aSize*uPixelRatio*(3.0/-mv.z),1.0,16.0);vColor=aColor;vAlpha=aTheme<.5?uWeight0:(aTheme<1.5?uWeight1:uWeight2);}`;
+  const pointsFragment=`varying vec3 vColor;varying float vAlpha;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float glow=exp(-d*10.0);gl_FragColor=vec4(vColor,glow*vAlpha*.82);}`;
+  const flareShader=`uniform float uTime;uniform float uWeight;varying vec2 vUv;void main(){float edge=exp(-pow((vUv.x-.5)*7.0,2.0));float line=exp(-pow((vUv.y-.5)*30.0,2.0));float pulse=.75+.25*sin(uTime*1.5);gl_FragColor=vec4(.18,.76,1.0,edge*line*pulse*uWeight*.8);}`;
+  async function loadThree(){if(THREE)return THREE;const [core,composer,renderPass,bloom]=await Promise.all([import(moduleUrls.core),import(moduleUrls.composer),import(moduleUrls.renderPass),import(moduleUrls.bloom)]);THREE={...core,EffectComposer:composer.EffectComposer,RenderPass:renderPass.RenderPass,UnrealBloomPass:bloom.UnrealBloomPass};return THREE}
+  function attachOrb(){const composer=document.querySelector('.composer');if(!composer){sceneRuntime?.dispose();sceneRuntime=null;currentCanvas=null;return}let canvas=composer.querySelector('.spatial-orb');if(!canvas){canvas=document.createElement('canvas');canvas.className='spatial-orb';canvas.setAttribute('aria-hidden','true');composer.prepend(canvas)}if(canvas===currentCanvas)return;sceneRuntime?.dispose();currentCanvas=canvas;loadThree().then(lib=>{if(!canvas.isConnected)return;
+      const renderer=new lib.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));renderer.setClearColor(0x000000,0);renderer.toneMapping=lib.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+      const scene=new lib.Scene(),camera=new lib.PerspectiveCamera(38,1,.1,30);camera.position.z=4.5;const universe=new lib.Group();scene.add(universe);const worlds=[];const palette=[0xff310d,0x18caff,0x9e65ed];
+      for(let i=0;i<3;i++){const group=new lib.Group();group.userData.theme=i;universe.add(group);const geo=new lib.SphereGeometry(1,160,112);const material=new lib.ShaderMaterial({uniforms:{uTime:{value:0},uTheme:{value:i},uWeight:{value:0}},vertexShader,fragmentShader:planetShader,transparent:true,depthWrite:false,blending:lib.NormalBlending});const planet=new lib.Mesh(geo,material);planet.scale.setScalar(i===1?.78:.83);group.add(planet);const shell=new lib.Mesh(new lib.SphereGeometry(1.09,96,72),new lib.ShaderMaterial({uniforms:{uTheme:{value:i},uWeight:{value:0}},vertexShader:'varying vec3 vNormal;varying vec3 vPosition;void main(){vNormal=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vPosition=mv.xyz;gl_Position=projectionMatrix*mv;}',fragmentShader:atmosphereShader,transparent:true,side:lib.BackSide,depthWrite:false,blending:lib.AdditiveBlending}));shell.scale.copy(planet.scale).multiplyScalar(1.06);group.add(shell);const aura=new lib.PointLight(palette[i],i===1?5:2.4,5);aura.position.set(-.55,.4,1.1);group.add(aura);worlds.push({group,planet,shell,aura,weight:0,target:0,theme:i})}
+      const flare=new lib.Mesh(new lib.PlaneGeometry(4.2,.32),new lib.ShaderMaterial({uniforms:{uTime:{value:0},uWeight:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:flareShader,transparent:true,depthWrite:false,blending:lib.AdditiveBlending,side:lib.DoubleSide}));flare.position.set(0,0,.65);scene.add(flare);
+      const satellite=new lib.Mesh(new lib.SphereGeometry(.22,40,32),new lib.MeshStandardMaterial({color:0x080d17,roughness:.88,metalness:.28}));scene.add(satellite);
+      const count=1170,positions=new Float32Array(count*3),colors=new Float32Array(count*3),themes=new Float32Array(count),sizes=new Float32Array(count),phases=new Float32Array(count);let k=0;const rand=(a,b)=>a+Math.random()*(b-a);function addParticle(theme,x,y,z,r,g,b,size){const j=k++;positions.set([x,y,z],j*3);colors.set([r,g,b],j*3);themes[j]=theme;sizes[j]=size;phases[j]=Math.random()*Math.PI*2}
+      for(let i=0;i<280;i++){const a=Math.random()*Math.PI*2,r=rand(1.06,1.55);addParticle(0,Math.cos(a)*r,rand(-.28,.28),Math.sin(a)*r,.10,.12,.15,rand(2.5,5.4))}
+      for(let i=0;i<110;i++){const a=Math.random()*Math.PI*2,r=rand(.88,1.55);addParticle(0,Math.cos(a)*r,rand(-.8,.8),Math.sin(a)*r,1,.24,.055,rand(1.7,3.8))}
+      for(let i=0;i<390;i++){const a=Math.random()*Math.PI*2,r=rand(1.04,1.72),y=rand(-1.3,1.3);addParticle(1,Math.cos(a)*r,y,Math.sin(a)*r,.18,.72,1,rand(1.3,3.4))}
+      for(let i=0;i<390;i++){const a=Math.random()*Math.PI*2,r=rand(1.1,2.0),y=rand(-1.6,1.6);addParticle(2,Math.cos(a)*r,y,Math.sin(a)*r,.6,.34,1,rand(1.2,3.5))}
+      const particleGeometry=new lib.BufferGeometry();particleGeometry.setAttribute('position',new lib.BufferAttribute(positions,3));particleGeometry.setAttribute('aColor',new lib.BufferAttribute(colors,3));particleGeometry.setAttribute('aTheme',new lib.BufferAttribute(themes,1));particleGeometry.setAttribute('aSize',new lib.BufferAttribute(sizes,1));particleGeometry.setAttribute('aPhase',new lib.BufferAttribute(phases,1));const particleMaterial=new lib.ShaderMaterial({uniforms:{uTime:{value:0},uWeight0:{value:0},uWeight1:{value:0},uWeight2:{value:0},uPixelRatio:{value:renderer.getPixelRatio()}},vertexShader:pointsVertex,fragmentShader:pointsFragment,transparent:true,depthWrite:false,blending:lib.AdditiveBlending});const particles=new lib.Points(particleGeometry,particleMaterial);scene.add(particles);
+      const composerFx=new lib.EffectComposer(renderer);composerFx.addPass(new lib.RenderPass(scene,camera));const bloomPass=new lib.UnrealBloomPass(new lib.Vector2(256,192),.75,.52,.42);composerFx.addPass(bloomPass);
+      let targetMode=0;const readMode=()=>{const selected=document.querySelector('.persona-pill.active')?.dataset.mode||document.querySelector('#assistantMode')?.value||localStorage.getItem('manas-mode')||'jarvis';targetMode=selected==='coding'?1:selected==='creative'?2:0;const names=['JARVIS CORE · MAGMA','CODE ARCHITECT · BLUE STAR','CREATIVE ENGINE · LUNAR'];const hud=composer.querySelector('.celestial-hud');if(hud)hud.textContent=names[targetMode];worlds.forEach(w=>w.target=w.theme===targetMode?1:0);flare.material.uniforms.uWeight.value=targetMode===1?1:0;bloomPass.strength=targetMode===1?.95:targetMode===0?.62:.48};
+      const clickMode=e=>{const pill=e.target.closest('.persona-pill');if(pill){targetMode=pill.dataset.mode==='coding'?1:pill.dataset.mode==='creative'?2:0;worlds.forEach(w=>w.target=w.theme===targetMode?1:0);flare.material.uniforms.uWeight.value=targetMode===1?1:0;bloomPass.strength=targetMode===1?.95:targetMode===0?.62:.48;const hud=composer.querySelector('.celestial-hud');if(hud)hud.textContent=['JARVIS CORE · MAGMA','CODE ARCHITECT · BLUE STAR','CREATIVE ENGINE · LUNAR'][targetMode]}};
+      const modeChange=()=>readMode();document.addEventListener('click',clickMode);document.addEventListener('change',modeChange);window.addEventListener('storage',modeChange);readMode();
+      const hud=document.createElement('div');hud.className='celestial-hud';hud.setAttribute('aria-live','polite');hud.textContent=['JARVIS CORE · MAGMA','CODE ARCHITECT · BLUE STAR','CREATIVE ENGINE · LUNAR'][targetMode];composer.append(hud);
+      let pointer={x:0,y:0},target={x:0,y:0},frame=0,disposed=false;const resize=()=>{if(disposed)return;const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);composerFx.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();particleMaterial.uniforms.uPixelRatio.value=renderer.getPixelRatio()};const move=e=>{const rect=canvas.getBoundingClientRect();target.x=Math.max(-1,Math.min(1,((e.clientX-rect.left)/rect.width-.5)*2));target.y=Math.max(-1,Math.min(1,(.5-(e.clientY-rect.top)/rect.height)*2))};const observer=new ResizeObserver(resize);observer.observe(canvas);resize();const clock=new lib.Clock();
+      const render=()=>{if(disposed||!canvas.isConnected)return;frame=requestAnimationFrame(render);const t=clock.getElapsedTime();pointer.x+=(target.x-pointer.x)*.1;pointer.y+=(target.y-pointer.y)*.1;const voiceActive=document.body.classList.contains('voice-speaking')||document.body.classList.contains('voice-listening'),voicePulse=voiceActive?1+Math.sin(t*6)*.026:1;worlds.forEach(w=>{w.weight+=(w.target-w.weight)*.045;w.group.visible=w.weight>.008;w.group.position.x+=((w.theme-targetMode)*.17-w.group.position.x)*.04;w.group.position.y=Math.sin(t*.3+w.theme)*.035;w.group.rotation.y=t*(w.theme===0?.08:w.theme===1?.17:.045)+pointer.x*.08;w.group.rotation.x=pointer.y*.035;w.group.scale.setScalar((.88+w.weight*.14)*voicePulse);w.planet.material.uniforms.uTime.value=t;w.planet.material.uniforms.uWeight.value=w.weight;w.shell.material.uniforms.uWeight.value=w.weight;w.aura.intensity=(w.theme===1?5:2.4)*w.weight});universe.rotation.y=pointer.x*.035;universe.rotation.x=pointer.y*.028;particles.rotation.y=t*.025;particleMaterial.uniforms.uTime.value=t;particleMaterial.uniforms.uWeight0.value=worlds[0].weight;particleMaterial.uniforms.uWeight1.value=worlds[1].weight;particleMaterial.uniforms.uWeight2.value=worlds[2].weight;flare.material.uniforms.uTime.value=t;const flareTarget=targetMode===1?1:0;flare.material.uniforms.uWeight.value+=(flareTarget-flare.material.uniforms.uWeight.value)*.055;flare.visible=worlds[1].weight>.01;satellite.position.set(Math.cos(t*.7)*1.25,Math.sin(t*.7)*.22,.24+Math.sin(t*.7)*.28);satellite.visible=worlds[1].weight>.025;satellite.scale.setScalar(.22*worlds[1].weight);composerFx.render()};render();
+      sceneRuntime={dispose(){disposed=true;cancelAnimationFrame(frame);observer.disconnect();document.removeEventListener('click',clickMode);document.removeEventListener('change',modeChange);window.removeEventListener('storage',modeChange);particleGeometry.dispose();particleMaterial.dispose();worlds.forEach(w=>{w.planet.geometry.dispose();w.planet.material.dispose();w.shell.geometry.dispose();w.shell.material.dispose()});flare.geometry.dispose();flare.material.dispose();satellite.geometry.dispose();satellite.material.dispose();composerFx.dispose();renderer.dispose();hud.remove()}};
+    }).catch(error=>{console.warn('[Manas celestial renderer] WebGL unavailable; using the lightweight visual fallback.',error);canvas.classList.add('spatial-orb-fallback')})}
+  const mutationObserver=new MutationObserver(attachOrb);mutationObserver.observe(document.body,{childList:true,subtree:true});attachOrb();window.addEventListener('resize',attachOrb,{passive:true});
 </script>
 </body>
 </html>
